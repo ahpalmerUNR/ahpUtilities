@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: ahpalmerUNR
 # @Date:   2020-06-04 11:07:18
-# @Last Modified by:   ahpalmer
-# @Last Modified time: 2020-07-16 15:35:30
+# @Last Modified by:   ahpalmerUNR
+# @Last Modified time: 2020-07-20 18:02:15
 import numpy as np
 import math
 import random as rm
@@ -30,7 +30,7 @@ def projectSlopesOntoPlane(pointSlopes,cameraTranslation):
 	projections = np.array([projectionsXs,projectionsYs,np.zeros(projectionsXs.shape[0]),np.ones(projectionsXs.shape[0])])
 	return projections.T.squeeze()
 
-def calculateNormBetweenSets3DPoints(set1,set2):
+def calculateNormBetweenSets(set1,set2):
 	return np.linalg.norm(set1-set2)
 
 def addColumnOfOnesToNumpy2DArray(arrayIn):
@@ -58,23 +58,23 @@ def getPointCloudFromLaser(laserScan):
 	return np.array(cloud)
 
 def unitTest():
-	transformationMatrix = np.eye(4)
-	transformationMatrix[2,3] = 1
-	pointsToTransform = np.random.rand(5,3)
-	pointsToTransform[:,2] = 1
-	projectedPoints = projectPointsOntoPlaneUsingMatrix(pointsToTransform,transformationMatrix)
-	print("Identity")
-	print(pointsToTransform)
-	print(transformationMatrix)
-	print(projectedPoints)
-	transformationMatrix = np.array([[0,1,0,0],[0,0,1,0],[1,0,0,1],[0,0,0,1]])
-	pointsToTransform = np.random.rand(5,3)
-	pointsToTransform[:,0] = 1
-	projectedPoints = projectPointsOntoPlaneUsingMatrix(pointsToTransform,transformationMatrix)
-	print("XYZ==>YZX")
-	print(pointsToTransform)
-	print(transformationMatrix)
-	print(projectedPoints)
+	first = np.ones((1,7))
+	second = np.array([a for a in range(7)])
+	assert(((first - second)**2).sum()**(0.5) == calculateNormBetweenSets(first,second))
+	transformationMatrix = np.matrix([[  0.8365163, -0.1950597,  0.5120471, .3],[0.4829629,  0.7038788, -0.5208661, 1.2],[-0.2588190,  0.6830127,  0.6830127, 5 ],[0,0,0,1]])
+	transformationMatrixInverse = np.linalg.inv(transformationMatrix)
+	horizonPoint1 = np.array([[.1,0.0,1,1]])
+	horizonPoint2 = np.array([[-.2,0.0,1,1]])
+	horizonPoint3 = np.array([[-.2,0.0,1.2,1]])
+	print(horizonPoint1,horizonPoint2,horizonPoint3)
+	transHPoint1 = applyTransformationToPoints(transformationMatrix,horizonPoint1)[:3]
+	transHPoint2 = applyTransformationToPoints(transformationMatrix,horizonPoint2)[:3]
+	transHPoint3 = applyTransformationToPoints(transformationMatrix,horizonPoint3)[:3]
+	print(transHPoint1,transHPoint2,transHPoint3)
+	print(transHPoint1 - transHPoint2)
+	print(transHPoint1 - transHPoint3)
+	print(transHPoint2 - transHPoint3)
+	print(np.cross((transHPoint1 - transHPoint3).T,(transHPoint1 - transHPoint2).T))#for normal to plane
 
 if __name__ == '__main__':
 	unitTest()
