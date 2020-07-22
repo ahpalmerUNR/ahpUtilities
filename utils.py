@@ -2,7 +2,7 @@
 # @Author: ahpalmerUNR
 # @Date:   2020-06-04 11:07:18
 # @Last Modified by:   ahpalmerUNR
-# @Last Modified time: 2020-07-20 18:02:15
+# @Last Modified time: 2020-07-21 16:19:07
 import numpy as np
 import math
 import random as rm
@@ -57,24 +57,83 @@ def getPointCloudFromLaser(laserScan):
 
 	return np.array(cloud)
 
+def getHorizonLine(cameraMatrix,transformationMatrix):
+	parallelSets = getParallelSets()
+	transformedPoints = getTransformedParallelSets(parallelSets,transformationMatrix)
+	cameraPoints = getCameraPoints(cameraMatrix,transformedPoints)
+	parallelLines = getParallelLineSets(cameraPoints)
+	horizonPoints = getHorizonPointsFromParallelLines(parallelLines)
+	slopeHorizon,interceptHorizon = getSlopeAndInterceptOf2Points2D(horizonPoints[0],horizonPoints[1])
+	return slopeHorizon,interceptHorizon
+
+def getParallelSets():
+	line1 = np.array([(-1,0,5,1.0),(-1,0,6,1)])
+	line2 = np.array([(1,0,5,1.0),(1,0,6,1)])
+	line3 = np.array([(-1,0,5,1.0),(0,0,6,1)])
+	line4 = np.array([(1,0,5,1.0),(2,0,6,1)])
+	set1 = [line1,line2]
+	set2 = [line3,line4]
+	return set1,set2
+
+def getTransformedParallelSets(parallelSets,transformationMatrix):
+	transformedLine1 = applyTransformationToPoints(transformationMatrix,parallelSets[0][0]).T.A
+	transformedLine2 = applyTransformationToPoints(transformationMatrix,parallelSets[0][1]).T.A
+	transformedLine3 = applyTransformationToPoints(transformationMatrix,parallelSets[1][0]).T.A
+	transformedLine4 = applyTransformationToPoints(transformationMatrix,parallelSets[1][1]).T.A
+	transformedSet1 = [transformedLine1[:,:3],transformedLine2[:,:3]]
+	transformedSet2 = [transformedLine3[:,:3],transformedLine4[:,:3]]
+	return transformedSet1,transformedSet2
+
+def getCameraPoints(cameraMatrix,transformedPoints):
+	cameraLine1 = applyTransformationToPoints(cameraMatrix,transformedPoints[0][0]).T.A
+	cameraLine2 = applyTransformationToPoints(cameraMatrix,transformedPoints[0][1]).T.A
+	cameraLine3 = applyTransformationToPoints(cameraMatrix,transformedPoints[1][0]).T.A
+	cameraLine4 = applyTransformationToPoints(cameraMatrix,transformedPoints[1][1]).T.A
+	cameraSet1 = [cameraLine1[:,:2],cameraLine2[:,:2]]
+	cameraSet2 = [cameraLine3[:,:2],cameraLine4[:,:2]]
+	return cameraSet1,cameraSet2
+
+def getParallelLineSets(cameraPoints):
+	parallelLine1 = getSlopeAndInterceptOf2Points2D(cameraPoints[0][0][0],cameraPoints[0][0][1])
+	parallelLine2 = getSlopeAndInterceptOf2Points2D(cameraPoints[0][1][0],cameraPoints[0][1][1])
+	parallelLine3 = getSlopeAndInterceptOf2Points2D(cameraPoints[1][0][0],cameraPoints[1][0][1])
+	parallelLine4 = getSlopeAndInterceptOf2Points2D(cameraPoints[1][1][0],cameraPoints[1][1][1])
+	parallelSet1 = [parallelLine1,parallelLine2]
+	parallelSet2 = [parallelLine3,parallelLine4]
+	return parallelSet1,parallelSet2
+
+def getHorizonPointsFromParallelLines(parallelLines):
+	xIntersection1 = getXfromMBOf2Lines(parallelLines[0][0],parallelLines[0][1])
+	xIntersection2 = getXfromMBOf2Lines(parallelLines[1][0],parallelLines[1][1])
+	yIntersection1 = getYfromXandMB(xIntersection1,parallelLines[0][0])
+	yIntersection2 = getYfromXandMB(xIntersection2,parallelLines[1][0])
+	horizonPoints = [(xIntersection1,yIntersection1),(xIntersection2,yIntersection2)]
+	return horizonPoints
+
+
+def getSlopeAndInterceptOf2Points2D(point1,point2):
+	points = [point1,point2]
+	x_cords,y_cords = zip(*points)
+	A = np.vstack([x_cords,np.ones(len(x_cords))]).T
+	slope, intercept = np.linalg.lstsq(A,y_cords,rcond=None)[0]
+	return slope, intercept
+
+def getXfromMBOf2Lines(mbset1,mbset2):
+	return (mbset1[1] - mbset2[1])/(mbset2[0] - mbset1[0])
+
+def getYfromXandMB(x,mbset):
+	return mbset[0]*x + mbset[1]
+
 def unitTest():
 	first = np.ones((1,7))
 	second = np.array([a for a in range(7)])
 	assert(((first - second)**2).sum()**(0.5) == calculateNormBetweenSets(first,second))
 	transformationMatrix = np.matrix([[  0.8365163, -0.1950597,  0.5120471, .3],[0.4829629,  0.7038788, -0.5208661, 1.2],[-0.2588190,  0.6830127,  0.6830127, 5 ],[0,0,0,1]])
+	cameraMatrix = np.matrix([[489.333, 0.000000, 320, 0.000000, 367, 180, 0.000000, 0.000000, 1.000000]]).reshape((3,3))
 	transformationMatrixInverse = np.linalg.inv(transformationMatrix)
-	horizonPoint1 = np.array([[.1,0.0,1,1]])
-	horizonPoint2 = np.array([[-.2,0.0,1,1]])
-	horizonPoint3 = np.array([[-.2,0.0,1.2,1]])
-	print(horizonPoint1,horizonPoint2,horizonPoint3)
-	transHPoint1 = applyTransformationToPoints(transformationMatrix,horizonPoint1)[:3]
-	transHPoint2 = applyTransformationToPoints(transformationMatrix,horizonPoint2)[:3]
-	transHPoint3 = applyTransformationToPoints(transformationMatrix,horizonPoint3)[:3]
-	print(transHPoint1,transHPoint2,transHPoint3)
-	print(transHPoint1 - transHPoint2)
-	print(transHPoint1 - transHPoint3)
-	print(transHPoint2 - transHPoint3)
-	print(np.cross((transHPoint1 - transHPoint3).T,(transHPoint1 - transHPoint2).T))#for normal to plane
+	horizon = getHorizonLine(cameraMatrix,transformationMatrixInverse)
+	print(horizon)
+	# print(np.cross((transHPoint1 - transHPoint3).T,(transHPoint1 - transHPoint2).T))#for normal to plane
 
 if __name__ == '__main__':
 	unitTest()
