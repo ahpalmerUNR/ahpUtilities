@@ -2,10 +2,16 @@
 # @Author: ahpalmerUNR
 # @Date:   2020-06-04 11:07:18
 # @Last Modified by:   ahpalmerUNR
-# @Last Modified time: 2020-07-21 16:19:07
+# @Last Modified time: 2020-07-29 23:09:20
 import numpy as np
 import math
 import random as rm
+
+def getConvertedPixelToNonOpticalCamPoint(pixelPoints,cameraMatrix):
+	pixelPointsWithZColumnOnes = addColumnOfOnesToNumpy2DArray(pixelPoints)
+	projectingInverseCamMatrix = np.matrix([[0,0,1],[-1,0,0],[0,-1,0]])*np.linalg.inv(cameraMatrix)
+	projOfCamPointsInNonOpticalFrame = projectingInverseCamMatrix*pixelPointsWithZColumnOnes.T
+	return projOfCamPointsInNonOpticalFrame
 
 def projectPointsOntoPlaneUsingMatrix(pointsToProject,transformationMatrix):
 	pointSlopes = getTransformedSlopes(pointsToProject,transformationMatrix)
@@ -61,16 +67,17 @@ def getHorizonLine(cameraMatrix,transformationMatrix):
 	parallelSets = getParallelSets()
 	transformedPoints = getTransformedParallelSets(parallelSets,transformationMatrix)
 	cameraPoints = getCameraPoints(cameraMatrix,transformedPoints)
+	print(cameraPoints)
 	parallelLines = getParallelLineSets(cameraPoints)
 	horizonPoints = getHorizonPointsFromParallelLines(parallelLines)
 	slopeHorizon,interceptHorizon = getSlopeAndInterceptOf2Points2D(horizonPoints[0],horizonPoints[1])
-	return slopeHorizon,interceptHorizon
+	return slopeHorizon,interceptHorizon,cameraPoints,parallelLines,horizonPoints
 
 def getParallelSets():
-	line1 = np.array([(-1,0,5,1.0),(-1,0,6,1)])
-	line2 = np.array([(1,0,5,1.0),(1,0,6,1)])
-	line3 = np.array([(-1,0,5,1.0),(0,0,6,1)])
-	line4 = np.array([(1,0,5,1.0),(2,0,6,1)])
+	line1 = np.array([(-.1,0,-.5,1.0),(-.1,0,.6,1)])
+	line2 = np.array([(.1,0,-.5,1.0),(.1,0,.6,1)])
+	line3 = np.array([(-.1,0,-.5,1.0),(0,0,.6,1)])
+	line4 = np.array([(.1,0,-.5,1.0),(.2,0,.6,1)])
 	set1 = [line1,line2]
 	set2 = [line3,line4]
 	return set1,set2
@@ -86,9 +93,13 @@ def getTransformedParallelSets(parallelSets,transformationMatrix):
 
 def getCameraPoints(cameraMatrix,transformedPoints):
 	cameraLine1 = applyTransformationToPoints(cameraMatrix,transformedPoints[0][0]).T.A
+	cameraLine1 = (cameraLine1.T/(cameraLine1[:,2])).T
 	cameraLine2 = applyTransformationToPoints(cameraMatrix,transformedPoints[0][1]).T.A
+	cameraLine2 = (cameraLine2.T/(cameraLine2[:,2])).T
 	cameraLine3 = applyTransformationToPoints(cameraMatrix,transformedPoints[1][0]).T.A
+	cameraLine3 = (cameraLine3.T/(cameraLine3[:,2])).T
 	cameraLine4 = applyTransformationToPoints(cameraMatrix,transformedPoints[1][1]).T.A
+	cameraLine4 = (cameraLine4.T/(cameraLine4[:,2])).T
 	cameraSet1 = [cameraLine1[:,:2],cameraLine2[:,:2]]
 	cameraSet2 = [cameraLine3[:,:2],cameraLine4[:,:2]]
 	return cameraSet1,cameraSet2
